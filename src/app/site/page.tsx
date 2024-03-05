@@ -27,7 +27,7 @@ export default function Home() {
                 </div>
             </section>
 
-            <section className="flex justify-center items-center flex-col gap-4 mt-20">
+            <section className="flex justify-center items-center flex-col gap-4 md:!mt-20 mt-[40px]">
                 <h2 className="text-4xl text-centercent">Choose what fits you right</h2>
                 
                 <p className="text-muted-foreground text-center">
@@ -38,6 +38,7 @@ export default function Home() {
                 <div className="flex flex-wrap justify-center mt-6 gap-4">
                     {
                         pricingCards.map((card, index) => (
+                            // WIP wire up free product from scratch
                             <Card key={card.title} className={clsx('w-[300px] flex flex-col justify-between', {'border-2 border-primary': card.title === 'Unlimited Saas'})}>
                                 <CardHeader>
                                     <CardTitle className={clsx('', {'text-muted-foreground':card.title != 'Unlimited Saas'})}>{card.title}</CardTitle>
