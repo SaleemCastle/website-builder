@@ -47,7 +47,15 @@ export const saveActivityLogsNotification = async ({
 
     if (!authUser) {
         const response = await db.user.findFirst({
-            
+            where: {
+                Agency: {
+                    SubAccount: {
+                        some: {
+                            id: subaccountId
+                        }
+                    }
+                }
+            }
         })
     }
 }
