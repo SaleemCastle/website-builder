@@ -1,4 +1,5 @@
 import BlurPage from '@/components/global/blur-page'
+import InfoBar from '@/components/global/infobar'
 import Sidebar from '@/components/sidebar'
 import Unauthorized from '@/components/unauthorized'
 import { getNotificationAndUser, verifyAndAcceptInvitation } from '@/lib/queries'
@@ -34,6 +35,7 @@ const layout = async ({ children, params }: Props) => {
         <div className='h-screen overflow-hidden'>
             <Sidebar id={ params.agencyId } type='agency'/>
             <div className='md:pl-[300px]'>
+                <InfoBar notifications={ allNotifications } role={ allNotifications.User?.rolw }/>
                 <div className='relative'>
                     <BlurPage>
                         { children }
