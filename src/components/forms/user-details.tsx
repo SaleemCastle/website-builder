@@ -5,15 +5,21 @@ import { SubAccount, User } from '@prisma/client'
 import React, { useEffect, useState } from 'react'
 import { useToast } from '../ui/use-toast'
 import { useRouter } from 'next/navigation'
-import { getAuthUserDetails, getUserPermissions, saveActivityLogsNotification, updateUser } from '@/lib/queries'
+import { changeUserPermissions, getAuthUserDetails, getUserPermissions, saveActivityLogsNotification, updateUser } from '@/lib/queries'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form'
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../ui/form'
 import FileUpload from '../global/file-upload'
 import { Input } from '../ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { Button } from '../ui/button'
+import Loading from '../global/loading'
+import { Separator } from '../ui/separator'
+import { Switch } from '../ui/switch'
+import { v4 } from 'uuid'
+import { access } from 'fs'
 
 type Props = {
     id: string | null
@@ -82,6 +88,55 @@ const UserDetails = ({ id, type, userData, subAccounts }: Props) => {
             form.reset(userData)
         }
     }, [userData, data])
+
+    const onChangePermissions = async (subAccountId: string, val: boolean, permissionsId: string | undefined) => {
+        if (!data.user?.email) return
+        setLoadingPermissions(true)
+        const response = await changeUserPermissions(
+            permissionsId ? permissionsId : v4(),
+            data.user?.email,
+            subAccountId,
+            val
+        )
+
+        if (type === 'agency') {
+            await saveActivityLogsNotification({
+                agencyId: authUserData?.Agency?.id,
+                description: `Gave ${userData?.name} access to | ${
+                  subAccountPermissions?.Permissions.find(
+                    (p) => p.subAccountId === subAccountId
+                  )?.SubAccount.name
+                } `,
+                subaccountId: subAccountPermissions?.Permissions.find(
+                  (p) => p.subAccountId === subAccountId
+                )?.SubAccount.id,
+            })
+        }
+
+        if (response) {
+            toast({
+                title: 'Success',
+                description: 'The request was succesfull'
+            })
+            if (subAccountPermissions) {
+                subAccountPermissions.Permissions.find((prm) => {
+                    if (prm.subAccountId === subAccountId) {
+                        return { ...prm, access: !prm.access }
+                    }
+                    return prm
+                })
+            }
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Failed',
+                description: 'Could not update permissions',
+            })
+        }
+
+        router.refresh()
+        setLoadingPermissions(false)
+    }
 
     const onSubmit = async (values: z.infer<typeof userDataSchema>) => {
         if (!id) return
@@ -241,6 +296,52 @@ const UserDetails = ({ id, type, userData, subAccounts }: Props) => {
                         >
 
                         </FormField>
+                        <Button
+                            disabled={ form.formState.isSubmitting }
+                            type='submit'
+                            >
+                            {
+                                form.formState.isSubmitting
+                                ? <Loading />
+                                : "Save User Details"
+                            }
+                        </Button>
+                        {
+                            authUserData?.role === "AGENCY_OWNER"
+                            &&
+                            <div>
+                                <Separator className='my-4' />
+                                <FormLabel>User Permissions</FormLabel>
+                                <FormDescription className='mb-4'>
+                                    You can give Sub Account access to team member by turning on
+                                    access control for each Sub Account. This is only visible to
+                                    agency owners
+                                </FormDescription>
+                                <div className='flex flex-col gap-4'>
+                                    {
+                                        subAccounts?.map(subAccount => {
+                                            const subAccountPermissionsDetails = subAccountPermissions
+                                            ?.Permissions.find((p) => p.subAccountId === subAccount.id)
+                                            return (
+                                                <div
+                                                    key={ subAccount.id }
+                                                    className='flex flex-col items-center justify-between rounded-lg border p-4'
+                                                >
+                                                    <div><p>{ subAccount.name }</p></div>
+                                                    <Switch 
+                                                        disabled={ loadingPermissions }
+                                                        checked={ subAccountPermissionsDetails?.access }
+                                                        onCheckedChange={(permission) => { 
+                                                            onChangePermissions(subAccount.id, permission, subAccountPermissionsDetails?.id)
+                                                        }}
+                                                    />
+                                                </div>
+                                            )
+                                        })
+                                    }
+                                </div>
+                            </div>
+                        }
                     </form>
                 </Form>
             </CardContent>
